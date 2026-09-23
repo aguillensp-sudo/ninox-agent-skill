@@ -1,0 +1,4 @@
+# Normalise line endings so a checkout on any platform produces the same bytes.
+* text=auto eol=lf
+*.png binary
+*.pdf binary

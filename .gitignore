@@ -1,0 +1,39 @@
+# Nothing here is data, a credential or a by-product of a real run.
+
+# Credentials
+.env
+*.env
+.env.*
+!.env.example
+*.credentials
+*.credentials.local
+*token*.txt
+*password*.txt
+
+# Payload and record scratch files: they carry a client's values, not ours.
+payload*.json
+_p*.json
+expect*.json
+out/
+tmp/
+*.log
+*.sqlite
+ninox_log.json
+
+# Real documents must never enter the repository, in any form.
+corpus/
+inbox/
+*.pdf
+*.msg
+*.docx
+*.odt
+*.xlsx
+*.png
+*.jpg
+*.jpeg
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
