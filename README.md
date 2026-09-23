@@ -43,9 +43,12 @@ Code that is `~/.claude/skills/ninox/`; other harnesses that implement the Agent
 format use an equivalent path.
 
 ```bash
-git clone https://github.com/nortexsys/ninox-agent-skill.git
+git clone https://github.com/aguillensp-sudo/ninox-agent-skill.git
 cp -r ninox-agent-skill ~/.claude/skills/ninox
 ```
+
+If this repository has moved into the `nortexsys` organisation, use that URL instead —
+the content is the same.
 
 The scripts need Python 3.10 or later and **no packages** — standard library only.
 
