@@ -37,6 +37,23 @@ result, or state that no threshold is claimed. Inventing one asserts something u
   protection against that case. The real protection is a read-before-derive rule in
   whatever produces the values.
 
+## Schema endpoints and `fn`
+
+- **`GET .../schema` and `GET .../databases/{db}` return a large, internal-looking
+  payload.** The schema is ~1.5 MB in the test database and carries editor state
+  (`viewConfig`, `tooltips`, `uuid`, `seq`) that reads as workspace serialisation
+  rather than a published contract. The vendor may change this shape without notice.
+  A client must **isolate** the schema behind an adapter and **degrade** if `fn`
+  disappears.
+- **Password-encrypted schemas are untested.** If a database carries a password,
+  the vendor documentation states the schema may be encrypted. This was not observed
+  in the test database (`settings.lock` was `false`), and whether an encrypted payload
+  is undecryptable or merely opaque to a client remains unknown.
+- **One formula field carried `fn` as an empty string.** Its meaning is unknown: an
+  emptied formula, or a formula field whose expression was cleared but whose kind was
+  not converted. A client filtering on the presence of `fn` will treat it as a formula;
+  that may or may not be right.
+
 ## Deep links
 
 - The URL structure **was verified but is not a published vendor contract.** It can
@@ -45,10 +62,15 @@ result, or state that no threshold is claimed. Inventing one asserts something u
 
 ## List, query and paging parameters
 
-- The exact query, filter, sort and paging parameters of the record list endpoint are
-  **vendor-documented, not verified by us**. Confirm them in the current vendor
-  documentation before depending on them, and never guess a parameter name — a wrong
-  parameter is one more way to earn an unexplained 500.
+- **`perPage` and `page` work.** They were re-verified on 2026-09-25.
+- **`?order=` and `?desc=` are accepted but their actual ordering is unverified.** A
+  query with those parameters answered `200` with the correct record count, but the
+  sort order was not confirmed — it may or may not actually sort. Before depending on
+  server-side ordering, fetch and sort locally.
+- **`?sinceSq=N` is unverified.** It was tested once, returned the default page, and
+  whether it filters, orders, or expects a different value is unknown.
+- **Never invent a parameter name.** A wrong parameter is one more way to earn an
+  unexplained 500.
 
 ## Interface deprecation
 

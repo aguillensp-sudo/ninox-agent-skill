@@ -13,10 +13,12 @@ specific places — each of which cost us real time to discover.
    reports an invalid, formula or read-only field name as `500`, not as a `4xx` with an
    explanation. A client that reads `500` as "server unwell" and retries forever hammers
    the API over its own mistake.
-2. **The schema does not mark formula or read-only fields.** Verified across 8,048
-   fields in 566 tables: a field object carries only `id`, `name` and `type`. You cannot
-   filter formula fields out by reading the schema — the only reliable filter is a human
-   mapping decision.
+2. **The table listing hides formula fields; the database schema marks them.** Verified
+   across 2,143 fields in 97 tables: `GET .../tables` returns only `id`, `name`, `type`
+   (plus relation keys), **omitting the 727 formula fields entirely**. `GET .../schema`
+   returns all 2,143 fields and marks each formula field with the key `fn`. A picker
+   built on the table listing will not know the formulas exist; the schema is the source
+   for filtering them out. Read-only fields carry no mark in either endpoint.
 3. **A create must always be read back.** Fields carrying formulas or defaults silently
    override what you submitted, and the create response does not reveal it.
 4. **Never blind-retry a create whose response was lost.** It may have landed. Retrying
@@ -100,9 +102,10 @@ The behavioural rules here come from Nortex Systems' Ninox work:
   documents** against a disposable table, all uploads answering HTTP 200.
 
 The endpoint and schema facts marked **VERIFIED** in `references/rest-api.md` were
-confirmed against a live workspace while this skill was written, and the numbers quoted
-(8,048 fields, 566 tables, the `type` vocabulary, `?limit` and `?pageSize` being
-ignored) are measurements from that pass, not recollections.
+confirmed against a live workspace while this skill was written. A spike on 2026-09-25
+re-verified the schema-endpoint findings (2,143 fields, 97 tables, formula fields
+hidden from `.../tables` and marked with `fn` in `.../schema`) and corrected the paging
+facts (`perPage` and `page` do work; `?limit` and `?pageSize` are ignored).
 
 Where something is **not** established — a maximum upload size, real upload timings, the
 behaviour of a choice field written with text matching none of its options — it is

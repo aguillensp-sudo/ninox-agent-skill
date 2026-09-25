@@ -51,7 +51,10 @@ access, and never ask for, store or transmit a Ninox username or password.
 | --- | --- | --- |
 | `GET /v1/teams` | **VERIFIED** | `200`, a list of `{id, name}` |
 | `GET /v1/teams/{team}/databases` | **VERIFIED** | `200`, a list of `{id, name}` |
-| `GET /v1/teams/{team}/databases/{db}/tables` | **VERIFIED** | `200`, a list of `{id, name, fields}` |
+| `GET /v1/teams/{team}/databases/{db}` | **VERIFIED** | `200`, a `{schema, settings}` object; `schema` is identical to the dedicated schema endpoint |
+| `GET /v1/teams/{team}/databases/{db}/schema` | **VERIFIED** | `200`, an object with `types[*].fields` containing all 2,143 fields; formula fields carry the key `fn` |
+| `GET /v1/teams/{team}/databases/{db}/tables` | **VERIFIED** | `200`, a list of `{id, name, fields}`; **omits all 727 formula fields** — field listing returns only 1,416 of 2,143 |
+| `GET /v1/teams/{team}/databases/{db}/tables/{table}` | **VERIFIED** | `200`, a `{fields, id, name}` object; same shape and field coverage as `.../tables` |
 | `GET /v1/teams/{team}/databases/{db}/tables/{table}/fields` | **VERIFIED ABSENT** | `404` `End-point not found` |
 
 Two things follow, and both cost time if you discover them the hard way:
@@ -64,8 +67,12 @@ Two things follow, and both cost time if you discover them the hard way:
 
 ### The field object
 
-**VERIFIED** across a whole subscription — 566 tables, 8,048 fields — a field object
-carries only these keys:
+**VERIFIED** across a database — 97 tables, 2,143 fields. Two endpoints return field
+objects, but they speak different languages:
+
+#### From `.../tables` (the listing endpoint)
+
+Each field carries:
 
 | Key | Present on | Meaning |
 | --- | --- | --- |
@@ -78,14 +85,29 @@ carries only these keys:
 | `referenceFromTable` | `rev` | The table the relation comes from. |
 | `referenceFromField` | `rev` | The field the relation comes from. |
 
-> **The schema carries no formula or read-only marker.** A sweep of all 8,048 fields
-> found nothing resembling `formula`, `readonly`, `read-only` or `computed`. So you
-> **cannot** filter formula fields out from the schema alone, and a design that
-> assumes "exclude the fields the schema marks as formula or read-only" is built on a
-> marker that does not exist. The reliable signal is that a write to one answers
-> **HTTP 500** — see `references/errors-and-retries.md`. The practical mitigation is
-> to write only fields a human has explicitly mapped, and to read the error as a
-> mapping error instead of as an outage.
+**Critical:** `.../tables` **omits all formula fields**. Of 2,143 fields in the
+database, this endpoint returns only 1,416. The 727 formula fields are not marked —
+they are absent.
+
+#### From `.../schema` or `.../databases/{db}` (the full schema)
+
+The same field objects carry many additional keys — vocabulary including `caption`
+(display name), `base` (field kind), `values` (choices), `refTypeId`/`refFieldId`
+(relations) — plus these critical ones:
+
+| Key | Present on | Meaning |
+| --- | --- | --- |
+| `fn` | **formula fields only** | The formula expression (e.g. `"(D+J)"`). Its presence is the marker. A field with `fn` **cannot** be written to. |
+| `base` | every field | Equivalent to `type` in `.../tables`. For formula fields, `base == "fn"`. |
+
+> **The schema carries no read-only marker.** There is no field-level signal for
+> read-only apart from the formula marker (`fn`). Expressions like `canWrite`,
+> `readRoles` and `writeRoles` exist but are display rules or role grants, not
+> storage properties. **The only reliable signal that a field is read-only is an
+> HTTP 500 on write** — see `references/errors-and-retries.md`. The practical
+> mitigation is to write only fields a human has explicitly mapped, filter out
+> formula fields when building a picker (by checking `fn`), and read the error as
+> a mapping error instead of as an outage.
 
 ### The `type` vocabulary
 
@@ -186,15 +208,24 @@ API over its own mapping mistake.
 
 ## Query parameters
 
-**VERIFIED NEGATIVE RESULT:** `?limit=2` and `?pageSize=2` were both accepted
-(`200`) and **ignored** — each returned the whole table rather than two records.
-Neither bounded the result set.
+**Paging parameters (records endpoint):**
 
-The consequence: **do not assume server-side paging or filtering exists, and never
-invent a parameter name.** Where a task needs recent records, fetch and bound the
-result set **locally**, and say which bound you applied. The correct parameter names,
-if any exist, are a vendor-documentation question — see
-`references/known-unknowns.md`.
+| Parameter | Verified |
+| --- | --- |
+| `?perPage=N` | **Works.** Honoured above the default. Tested with 2, 200, 1000; `perPage=1000` returned all 1,000 records. |
+| `?page=N` | **Works.** An offset: `page=50&perPage=2` returned a different pair than `page=0`, so it is not a no-op. |
+| Default (no parameters) | **Paged to 100.** An unparameterised call returns 100 records, not the whole table. Any code treating it as "the whole table" is wrong on tables with 100+ rows. |
+| `?limit=N` and `?pageSize=N` | **Both ignored.** `?limit=2` and `?pageSize=2` returned `200` and the whole table; neither bounded the result set. Do not use these names. |
+| `?sinceSq=N` | **Unverified.** Tested once, returned the full default page; whether it filters, orders or expects a different coordinate is unknown. |
+| `?order=` and `?desc=` | **Accepted, order not verified.** `?order=_id&desc=true&perPage=2` returned `200` with 2 records, but whether it actually ordered by `_id` was not confirmed — only that it returned the right count. |
+
+**Consequence:** **always supply `perPage` and `page`** when you need to bound a result
+set. Fetch and bound **locally** if the server-side order is uncertain. Do not assume
+server-side filtering or sorting exist; where required, fetch the records and filter
+in-memory. The `sequence` field is present but not guaranteed to order the default
+response (tested baseline showed it out of order), and `sinceSq` remains open.
+
+See `references/known-unknowns.md` for what genuinely remains unverified.
 
 ## Deep links
 

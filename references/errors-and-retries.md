@@ -72,12 +72,17 @@ Two properties make this work and must be preserved:
 
 ## Loading the candidate records
 
-Step 1 needs a way to fetch recent records, and the exact query, sort and paging
-parameters of the list endpoint are **vendor-documented, not project-verified**.
-Before relying on server-side filtering or sorting, confirm the parameter names in the
-current vendor documentation — see `references/rest-api.md`, and do not invent a
-parameter name. Where the parameters are not established, read a bounded page and
-filter locally, and state the bound you used.
+Step 1 needs a way to fetch recent records.
+
+- **`perPage` and `page` work:** use them to fetch a bounded page. `perPage` sets the
+  page size and `page` is an offset. The default is 100 records per page.
+- **Sorting is not verified:** `?order=` and `?desc=` are accepted but the actual
+  ordering is not confirmed. Do not depend on server-side sort; fetch a page and sort
+  locally.
+- **Filter locally:** the list endpoint has no query or filter parameters that have
+  been verified to work. Fetch a bounded page and filter in-memory.
+- **State the bound you applied:** if a time window is used as a filter, state it
+  explicitly so the next reader knows how far back the search looked.
 
 ## Errors you must not swallow
 

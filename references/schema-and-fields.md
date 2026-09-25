@@ -70,27 +70,28 @@ The `type` values observed across a whole subscription are:
 | `phone`, `email`, `html`, `link`, `location`, `timeinterval`, `icon` | Treat as unverified | Documented by their names, not established by us. Establish the accepted representation before writing, or ask the human. |
 | **Attachments** | **Not a field target** | Files are not fields at all in the schema. They attach to the *record* via the files endpoint. |
 
-### The formula trap: the schema does not mark them
+### The formula trap: the table listing hides them
 
-The natural design — "offer as mapping candidates every field the schema marks as
-writable, and exclude the ones it marks as formula or read-only" — **cannot be built
-on this API.** A sweep of 8,048 fields across 566 tables found no `formula`,
-`readonly`, `read-only` or `computed` marker anywhere. A field object carries only
-`id`, `name`, `type`, plus `choices` for choice fields and the reference keys for
-relations.
+The natural design — "offer as mapping candidates every field the table listing
+returns, exclude formula and read-only fields" — **requires reading the database
+schema, not the table listing.** Verified over 2,143 fields in 97 tables:
 
-So you cannot tell a formula field from a writable one by reading the schema. What
-follows:
+- `GET .../tables` **silently omits all 727 formula fields**. It returns 1,416 fields.
+- `GET .../schema` returns all 2,143 and marks each formula field with the key `fn`.
+- A picker built on the table listing will never know the formulas exist.
 
+Read-only fields carry no mark anywhere; `canWrite`, `readRoles`, etc. are display
+rules or role grants, not storage properties. So you **cannot** detect all read-only
+fields in advance. What follows:
+
+- **Read the database schema, not the table listing, to build a mapping picker.**
+- **Filter out formula fields** by checking for the `fn` key in the schema.
 - **Write only fields a human has explicitly mapped.** That is the only reliable
-  filter, because it is a human decision rather than an inferred one.
+  filter for read-only fields, because no marker exists.
 - **Read `HTTP 500` as a mapping error**, refresh the schema, retry once, then report
-  a mapping error. Do not report an outage.
+  a mapping error to the human. Do not report an outage.
 - Where a formula field computes a total, use it as a **post-write contrast** — read
   it back and compare — and never as a write target.
-- If a design document claims the schema marks formula fields, that claim is wrong and
-  the design is built on a marker that does not exist. Say so rather than implementing
-  around it.
 
 **Never create, alter or delete schema.** You may not add a field, rename a column, or
 change a table's shape to make your write fit. The user's database is theirs; if a

@@ -115,7 +115,8 @@ counter-intuitive. The full matrix and the reconciliation algorithm are in
   and the API-generation split. Marks what is vendor-documented separately from what
   our own projects verified.
 - `references/schema-and-fields.md` — teams, databases, tables, fields; identifiers
-  versus names; field types; formula, read-only and choice fields.
+  versus names; field types; the formula trap (table listing hides them, schema marks
+  them with `fn`); read-only and choice fields.
 - `references/write-path.md` — create → attach → read-back, mapping rules, payload
   conventions, merges.
 - `references/errors-and-retries.md` — the retry matrix and the reconciliation of an
